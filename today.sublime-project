@@ -1,0 +1,19 @@
+{
+	"folders":
+	[
+		{
+			"path": ".",
+			"file_exclude_patterns": [ "compile_commands.json"],
+			"folder_exclude_patterns": [ "build" ]
+		}
+	],
+	"build_systems": [
+		{
+			"name": "Build and Run",
+			"working_dir": "$project_path/build",
+			// "shell_cmd": "make && $project_base_name",
+			"shell_cmd": "cmake --build .",
+			// "interactive": true
+		}
+	]
+}
