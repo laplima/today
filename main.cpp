@@ -7,7 +7,6 @@
 #include <chrono>
 #include <print>
 #include <iostream>
-#include <format>
 #include <string>
 #include <span>
 #include <csignal>
@@ -16,7 +15,6 @@
 #include <stack>
 #include <fstream>
 #include <filesystem>
-// #include <tuple>
 #include <nlohmann/json.hpp>
 #include <fmt/color.h>
 #include "Activity.h"
@@ -38,7 +36,7 @@ enum class SelectionType : char {
 };
 
 struct Selection {
-	Selection(SelectionType t) : type{t} {}
+	explicit Selection(SelectionType t) : type{t} {}
 	Selection(SelectionType t, int v) : type{t}, value{v} {}
 	operator SelectionType() const { return type; }
  	SelectionType type = SelectionType::none;
@@ -49,7 +47,8 @@ fs::path make_dbpath(const fs::path& file_name);
 
 std::string input(const std::string& prompt);
 
-bool chronometer_on = false;
+std::atomic<bool> chronometer_on{false};
+// bool chronometer_on = false;
 
 void handler(int ns);
 void chronometer(const Activity& a);
@@ -68,6 +67,11 @@ int main(int argc, char* argv[])
 {
 	using namespace std;
 	span args(argv, argc);
+
+	// time zone, though specified (C++20) is not yet implemente?
+	//
+	// auto tz = std::chrono::current_zone();
+	// auto local = tz->to_local(Clock::now());
 
 	auto today = Clock::now();
 	println("\nTODAY - {:%d/%m/%Y}\n(C)2025 Luiz Lima Jr.\n", today + my_timezone);
@@ -96,10 +100,14 @@ int main(int argc, char* argv[])
 		}
 		if (istr.starts_with("x"))
 			return Selection{SelectionType::exit};
-		auto i = stoi(istr) - 1;
-		i = std::max(i,0);
-		i = std::min(i,static_cast<int>(activities.size()-1));
-		return Selection{SelectionType::nextactivity, i};
+
+		try {
+		    auto i = std::clamp(stoi(istr) - 1, 0,
+		                        static_cast<int>(activities.size()) - 1);
+		    return Selection{SelectionType::nextactivity, i};
+		} catch (const std::exception&) {
+		    return Selection{SelectionType::none};
+		}
 	};
 
 	auto selection = select_activity();
@@ -169,8 +177,24 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	fs::path history_path = getenv("HOME");
-	ofstream history{history_path / "/today.txt", ios::app};
+	fs::path home_path;
+	const auto* home = getenv("HOME");
+	if (home != nullptr)
+		home_path = home;
+	else {
+		home = getenv("HOMEDRIVE");
+		if (home != nullptr) {
+			home_path = home;
+			home = getenv("HOMEPATH");
+			if (home != nullptr)
+				home_path /= home;
+			else
+				home_path = ".";
+		} else
+			home_path = ".";
+	}
+
+	ofstream history{home_path / "today.txt", ios::app};
 	if (!completed_activities.empty()) {
 		println("* Completed today:\n");
 		while (!completed_activities.empty()) {
@@ -208,7 +232,8 @@ fs::path make_dbpath(const fs::path& file_name)
 void handler(int ns)
 {
 	// switch the cursor on
-	system("tput cnorm");
+	// system("tput cnorm");
+	std::print("\x1b[?25h");
 	signal(SIGINT, SIG_DFL);
 
 	std::println("{}[2D  ", (char)0x1b);	// clear ^C
@@ -221,7 +246,8 @@ void chronometer(const Activity& a)
 	signal(SIGINT, handler);
 
 	// switch the cursor off
-	system("tput civis");
+	// system("tput civis");
+	std::print("\x1b[?25l");
 
 	auto count = a.duration().count();
 	Time_t start_chono = Clock::system_clock::now();
@@ -238,11 +264,14 @@ void chronometer(const Activity& a)
 			if (min != 0) {
 				auto p = fork();
 				if (p==0) {
-					int error = execl("/usr/bin/afplay", "afplay",
+#ifdef __APPLE__
+					execl("/usr/bin/afplay", "afplay",
 						"/Users/laplima/Music/Sounds/pop.mp3", nullptr);
+#endif
 					// std::println(stderr, "tic failed! {}", error);
-					exit(1); // just in case
+					_exit(1); // just in case - avoids flushing stdio
 				}
+				waitpid(p, nullptr, WNOHANG);	// prevents zombies + doesn't hang up parent
 			}
 		}
 		// std::this_thread::sleep_for(1s);
