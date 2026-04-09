@@ -7,7 +7,6 @@
 #include <chrono>
 #include <optional>
 #include <memory>
-#include <sstream>
 #include <list>
 #include <utility>
 
@@ -15,10 +14,13 @@ using Clock  = std::chrono::system_clock;
 using Unit_t = std::chrono::seconds;
 using Time_t = std::chrono::time_point<Clock>;
 
+// constexpr auto my_timezone = std::chrono::hours(-3);
+
 class Activity {
 public:
 	Activity() = default;
 	explicit Activity(std::string name);
+	Activity(const Activity& a) = default;
 	~Activity();
 	void start();
 	void stop();
@@ -55,7 +57,8 @@ private:
 	std::list<std::pair<Time_t,Time_t>> history_;	// history of running intervals
 };
 
-std::string tformat(int secs); // seconds to XX:XX:XX
+std::string sec_to_str(int secs); // seconds to XX:XX:XX
+std::string fmt_localtime(const std::string& fmt, const Time_t& t);
 
 template<>
 struct std::formatter<Activity> : std::formatter<std::string> {
@@ -64,23 +67,23 @@ struct std::formatter<Activity> : std::formatter<std::string> {
 		string hist;
 		for (const auto& [start,end] : a.history())
 			hist += std::format("     \t{} - {}\n",
-				std::format("{:%d/%m/%Y %H:%M}", start-3h),
-				std::format("{:%d/%m/%Y %H:%M}", end-3h));
+				fmt_localtime("%d/%m/%Y %H:%M", start),
+				fmt_localtime("%d/%m/%Y %H:%M", end));
 		return format_to(ctx.out(), R"([{}]
 ------------
-     CREATED = {:%d/%m/%Y-%H:%M}
+     CREATED = {}
      STARTED = {}
        ENDED = {}
     DURATION = {}
         IDLE = {}
-     HISTORY =
+     HISTORY:
 {})",
 		a.name(),
-		a.time_created() - 3h,
-		(a.started() ? std::format("{:%d/%m/%Y-%H:%M}", a.time_started()-3h) : "NEVER"),
-		std::format("{:%d/%m/%Y-%H:%M}", a.time_ended() - 3h),
-		(a.started() ? tformat(a.duration().count()) : "--"),
-		(a.started() ? tformat(a.idle().count()) : "--"),
+		fmt_localtime("%d/%m/%Y-%H:%M", a.time_created()),
+		(a.started() ? fmt_localtime("%d/%m/%Y-%H:%M", a.time_started()) : "NEVER"),
+		fmt_localtime("%d/%m/%Y-%H:%M", a.time_ended()),
+		(a.started() ? sec_to_str(a.duration().count()) : "--"),
+		(a.started() ? sec_to_str(a.idle().count()) : "--"),
 		hist);
 	}
 };

@@ -3,12 +3,40 @@
 #include <format>
 // #include <algorithm>
 #include <stdexcept>
+#include <sstream>
+#include <iomanip>
+#include <ctime>
 
 using namespace std;
 using namespace std::chrono;
 
-// constexpr auto time_zone = -3h;
-std::string tformat(int secs)
+// In the future update to:
+/*
+// Get current time in local timezone
+auto now = std::chrono::zoned_time{
+    std::chrono::current_zone(),
+    std::chrono::system_clock::now()
+};
+
+std::cout << now << "\n"; // e.g. 2026-04-08 14:30:00 BRT
+// Access the local time point
+auto local = now.get_local_time();
+
+// Format it
+std::cout << std::format("{:%Y-%m-%d %H:%M:%S}", local) << "\n";
+*/
+
+std::string fmt_localtime(const std::string& fmt, const Time_t& t)
+{
+	auto tt = std::chrono::system_clock::to_time_t(t);
+	// Convert to local time using localtime
+	auto* local = std::localtime(&tt);
+	ostringstream ss;
+	ss << std::put_time(local, fmt.c_str());
+	return ss.str();
+}
+
+std::string sec_to_str(int secs)
 {
 	int hours = secs/3600;
 	int minutes = (secs/60) % 60;

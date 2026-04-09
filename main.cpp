@@ -24,7 +24,6 @@ using json = nlohmann::json;
 namespace fs = std::filesystem;
 
 const fs::path actfile = "activities.json";
-constexpr auto my_timezone = -3h;
 
 enum class SelectionType : char {
 	none,
@@ -68,13 +67,15 @@ int main(int argc, char* argv[])
 	using namespace std;
 	span args(argv, argc);
 
-	// time zone, though specified (C++20) is not yet implemente?
+	// time zone, though specified (C++20) is not yet implemented?
 	//
 	// auto tz = std::chrono::current_zone();
 	// auto local = tz->to_local(Clock::now());
 
 	auto today = Clock::now();
-	println("\nTODAY - {:%d/%m/%Y}\n(C)2025 Luiz Lima Jr.\n", today + my_timezone);
+
+	println("\nTODAY - {}\n(C)2025 Luiz Lima Jr.\n",
+		fmt_localtime("%d/%m/%Y %H:%M:%S", today));
 	
 	Activities activities;
 	stack<Activity_ptr> completed_activities;
@@ -135,11 +136,10 @@ int main(int argc, char* argv[])
 			// start next activity
 			activities.start(selection.value);
 			auto& curr = activities.current();
-			println("\n{:%d/%m/%Y-%H:%M} (created)",
-				curr.time_created() + my_timezone);
+			println("\n{} (created)", fmt_localtime("%d/%m/%Y-%H:%M", curr.time_created()));
 			if (Clock::to_time_t(curr.time_stopped()) != 0)
-				println("{:%d/%m/%Y-%H:%M} (last stopped)",
-					curr.time_stopped() + my_timezone);
+				println("{} (last stopped)",
+					fmt_localtime("%d/%m/%Y-%H:%M", curr.time_stopped()));
 			println("{}", string(curr.name().size(), '-'));
 			print(fmt::emphasis::bold | fg(fmt::color::white), "{}\n", curr.name());
 			println("{}", string(curr.name().size(), '-'));
@@ -254,8 +254,8 @@ void chronometer(const Activity& a)
 	chronometer_on = true;
 	while (chronometer_on) {
 		auto d = duration_cast<Unit_t>(Clock::now() - start_chono).count();
-		print(fg(fmt::color::green), "{}\n", tformat(d+count));
-		print(fmt::emphasis::bold | fg(fmt::color::green_yellow), "{}\n", tformat(d));
+		print(fg(fmt::color::green), "{}\n", sec_to_str(d+count));
+		print(fmt::emphasis::bold | fg(fmt::color::green_yellow), "{}\n", sec_to_str(d));
 
 		// beep
 		auto sec = d%60;
