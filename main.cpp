@@ -10,9 +10,11 @@
 #include <string>
 #include <span>
 #include <csignal>
+#include <sys/wait.h>
 #include <cstdlib>
 #include <unistd.h>		// sleep better than this_thread::sleep_for()
 #include <stack>
+#include <atomic>
 #include <fstream>
 #include <filesystem>
 #include <nlohmann/json.hpp>
@@ -75,7 +77,7 @@ int main(int argc, char* argv[])
 	auto today = Clock::now();
 
 	println("\nTODAY - {}\n(C)2025 Luiz Lima Jr.\n",
-		fmt_localtime("%d/%m/%Y %H:%M:%S", today));
+		fmt_localtime("%d-%m-%Y", today));
 	
 	Activities activities;
 	stack<Activity_ptr> completed_activities;
