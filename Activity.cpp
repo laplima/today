@@ -36,11 +36,11 @@ std::string fmt_localtime(const std::string& fmt, const Time_t& t)
 	return ss.str();
 }
 
-std::string sec_to_str(int secs)
+std::string sec_to_str(unsigned int secs)
 {
-	int hours = secs/3600;
-	int minutes = (secs/60) % 60;
-	int seconds = secs % 60;
+	unsigned int hours = secs/3600;
+	unsigned int minutes = (secs/60) % 60;
+	unsigned int seconds = secs % 60;
 	return std::format("{:02d}:{:02d}:{:02d}", hours, minutes, seconds);
 }
 

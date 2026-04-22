@@ -31,11 +31,10 @@ C++ 23 required.
 
 ```bash
 cd today
-cmake --preset=ninja --fresh
+cmake --preset=ci-default --fresh # -DCMAKE_PREFIX_PATH=<colibry_install>/lib/cmake
 cmake --build build --clean-first
 ```
-
-`make` preset also available.
+> Note1: If you have the COLIBRY libraries installed in a non-standard location, you may need to specify the path to the CMake configuration files for those libraries using the `-DCMAKE_PREFIX_PATH` option.
 
 #### Run the application with:
 
@@ -47,7 +46,6 @@ The activity list will be saved in the file `activities.json` located at `~/Libr
 
 ### Future work
 
-* [ ] Automatically set time zone (currently, -3).
 * [ ] Save the activities file in the current system's configuration folder (currently, it is saved in macOS' application support directory).
 * [ ] Command-line parameters (activity file location, custom time zone, sound alarms, etc.)
 * [ ] Set deadlines and reminders.
@@ -57,4 +55,4 @@ The activity list will be saved in the file `activities.json` located at `~/Libr
 
 ## Author
 
-Copyright (C) 2025 by Luiz A. de P. Lima Jr.
+Copyright (C) 2025-26 by Luiz A. de P. Lima Jr.

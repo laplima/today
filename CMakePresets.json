@@ -1,27 +1,16 @@
 {
-    "version": 9,
-    "configurePresets": [
-        {
-            "name": "ninja",
-            "displayName": "Build using Ninja",
-            "description": "build in debug mode using Ninja generator",
-            "generator": "Ninja",
-            "binaryDir": "build",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_CXX_STANDARD": "26"
-            }
-        },
-        {
-            "name": "make",
-            "displayName": "Build using make",
-            "description": "build in debug mode using Linux make generator",
-            "generator": "Unix Makefiles",
-            "binaryDir": "build",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_CXX_STANDARD": "26"
-            }
-        }
-    ]
+	"version": 9,
+	"configurePresets": [
+		{
+			"name": "ci-default",
+			"displayName": "Build today using Ninja",
+			"description": "build in release mode using Ninja generator",
+			"generator": "Ninja",
+			"binaryDir": "build",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release",
+				"CMAKE_CXX_STANDARD": "26"
+			}
+		}
+	]
 }

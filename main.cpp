@@ -4,7 +4,9 @@
 // All rights reserved.
 //
 
+#include <algorithm>
 #include <chrono>
+#include <colors.h>
 #include <print>
 #include <iostream>
 #include <string>
@@ -18,12 +20,13 @@
 #include <fstream>
 #include <filesystem>
 #include <nlohmann/json.hpp>
-#include <fmt/color.h>
+#include <colibry/TextTools.h>
 #include "Activity.h"
 
 using namespace std::chrono;
 using json = nlohmann::json;
 namespace fs = std::filesystem;
+namespace co = colibry;
 
 const fs::path actfile = "activities.json";
 
@@ -57,6 +60,8 @@ void list_activities(const Activities& acts);
 void read_new_activities(Activities& acts);
 bool read_db(const fs::path& p, Activities& activities);
 bool save_db(const fs::path& p, const Activities& activities);
+std::vector<std::string_view> split(std::string_view s, char t);
+std::string box(const std::string& title);
 
 // json helpers
 void to_json(json& j, const Activity& a);
@@ -76,9 +81,10 @@ int main(int argc, char* argv[])
 
 	auto today = Clock::now();
 
-	println("\nTODAY - {}\n(C)2025 Luiz Lima Jr.\n",
-		fmt_localtime("%d-%m-%Y", today));
-	
+	println(co::fg(co::terminal_color::white),
+		"{}", box(format("\nTODAY - {}\n(C)2026 Luiz Lima Jr.\n",
+		fmt_localtime("%d/%m/%Y (%a)", today))));
+
 	Activities activities;
 	stack<Activity_ptr> completed_activities;
 
@@ -142,9 +148,9 @@ int main(int argc, char* argv[])
 			if (Clock::to_time_t(curr.time_stopped()) != 0)
 				println("{} (last stopped)",
 					fmt_localtime("%d/%m/%Y-%H:%M", curr.time_stopped()));
-			println("{}", string(curr.name().size(), '-'));
-			print(fmt::emphasis::bold | fg(fmt::color::white), "{}\n", curr.name());
-			println("{}", string(curr.name().size(), '-'));
+
+			println(co::fg(co::terminal_color::yellow) | co::emphasis::bold,
+				"{}", box(curr.name()));
 
 			chronometer(curr);
 
@@ -238,7 +244,7 @@ void handler(int ns)
 	std::print("\x1b[?25h");
 	signal(SIGINT, SIG_DFL);
 
-	std::println("{}[2D  ", (char)0x1b);	// clear ^C
+	std::println("\n{}[2D  ", (char)0x1b);	// clear ^C
 	chronometer_on = false;
 }
 
@@ -256,8 +262,20 @@ void chronometer(const Activity& a)
 	chronometer_on = true;
 	while (chronometer_on) {
 		auto d = duration_cast<Unit_t>(Clock::now() - start_chono).count();
-		print(fg(fmt::color::green), "{}\n", sec_to_str(d+count));
-		print(fmt::emphasis::bold | fg(fmt::color::green_yellow), "{}\n", sec_to_str(d));
+
+		println("{}", format(std::runtime_format("\u250C{0:\u2500^{1}}\u2510"), "", 10));
+		std::print("\u2502 "); // |
+
+		std::print("{}", co::EscapedText{co::fg(co::color::green), sec_to_str(d+count)});
+
+		std::println(" \u2502");
+		std::print("\u2502 "); // |
+
+		std::print("{}", co::EscapedText{co::fg(co::color::green_yellow) | co::emphasis::bold,
+			sec_to_str(d)});
+
+		std::println(" \u2502");
+		println("{}", format(std::runtime_format("\u2514{0:\u2500^{1}}\u2518"), "", 10));
 
 		// beep
 		auto sec = d%60;
@@ -278,7 +296,7 @@ void chronometer(const Activity& a)
 		}
 		// std::this_thread::sleep_for(1s);
 		sleep(1);	// this one is interrupted immediately
-		std::print("{}[8D{}[2A", (char)0x1b, (char)0x1b);
+		std::print("{}[10D{}[4A", (char)0x1b, (char)0x1b);
 	}
 }
 
@@ -380,4 +398,38 @@ void from_json(const json& j, Activity& a)
     		system_clock::from_time_t(h["start"]),
     		system_clock::from_time_t(h["end"])
     	});
+}
+
+std::vector<std::string_view> split(std::string_view s, char t)
+{
+	std::string::size_type p0 = s.find_first_not_of(t);
+	std::string::size_type p1 = s.find_first_of(t, p0);
+	std::vector<std::string_view> v;
+	while (p1 != std::string::npos) {
+		v.emplace_back(s.substr(p0,p1-p0));
+		p0 = s.find_first_not_of(t,p1);
+		if (p0 == std::string::npos)
+			return v;
+		p1 = s.find_first_of(t,p0);
+	}
+	v.emplace_back(s.substr(p0));
+	return v;
+}
+
+std::string box(const std::string& title)
+{
+	// break string into lines
+	auto lines = split(title,'\n');
+	std::string::size_type wid = 0;
+	for (const auto& l : lines)
+		wid = std::max(l.size(), wid);
+	wid += 2;	// padding
+
+	std::string out;
+	out = format(std::runtime_format("\u250C{0:\u2500^{1}}\u2510\n"), "", wid);
+	for (const auto& l : lines)
+		out += format(std::runtime_format("\u2502{0: ^{1}}\u2502\n"), l, wid);
+	out += format(std::runtime_format("\u2514{0:\u2500^{1}}\u2518"), "", wid);
+
+	return out;
 }

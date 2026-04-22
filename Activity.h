@@ -57,7 +57,7 @@ private:
 	std::list<std::pair<Time_t,Time_t>> history_;	// history of running intervals
 };
 
-std::string sec_to_str(int secs); // seconds to XX:XX:XX
+std::string sec_to_str(unsigned int secs); // seconds to XX:XX:XX
 std::string fmt_localtime(const std::string& fmt, const Time_t& t);
 
 template<>
