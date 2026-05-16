@@ -3,7 +3,8 @@
 	"configurePresets": [
 		{
 			"name": "ci-default",
-			"displayName": "Build today using Ninja",
+			"hidden": true,
+			"displayName": "Build today using Ninja (base)",
 			"description": "build in release mode using Ninja generator",
 			"generator": "Ninja",
 			"binaryDir": "build",

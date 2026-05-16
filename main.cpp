@@ -58,10 +58,12 @@ void handler(int ns);
 void chronometer(const Activity& a);
 void list_activities(const Activities& acts);
 void read_new_activities(Activities& acts);
+Selection select_activity(const Activities& activities);
 bool read_db(const fs::path& p, Activities& activities);
 bool save_db(const fs::path& p, const Activities& activities);
 std::vector<std::string_view> split(std::string_view s, char t);
-std::string box(const std::string& title);
+std::string box(const std::string& title,
+	const co::TextStyle& style=co::TextStyle{});
 
 // json helpers
 void to_json(json& j, const Activity& a);
@@ -81,9 +83,12 @@ int main(int argc, char* argv[])
 
 	auto today = Clock::now();
 
-	println(co::fg(co::terminal_color::white),
-		"{}", box(format("\nTODAY - {}\n(C)2026 Luiz Lima Jr.\n",
-		fmt_localtime("%d/%m/%Y (%a)", today))));
+	co::cls();
+
+	println("{}", box(format("\nTODAY - {}\n(C)2026 Luiz Lima Jr.\n",
+		fmt_localtime("%d/%m/%Y (%a)", today)),
+		co::fg(co::terminal_color::white)
+	));
 
 	Activities activities;
 	stack<Activity_ptr> completed_activities;
@@ -96,31 +101,7 @@ int main(int argc, char* argv[])
 	else
 		read_new_activities(activities);
 
-	auto select_activity = [&activities]() {
-		list_activities(activities);
-		auto istr = input("[#] [ENTER] [n]ew [d]elete e[x]it: ");
-		if (istr.empty())
-			return Selection{SelectionType::resumelast};
-		if (istr.starts_with("n"))
-			return Selection{SelectionType::newactivity};
-		if (istr.starts_with("d")) {
-			auto s = istr.substr(1).empty() ? 0 : stoi(istr.substr(1));
-			return Selection(SelectionType::delactivity, s - 1);
-		}
-		if (istr.starts_with("x"))
-			return Selection{SelectionType::exit};
-
-		try {
-		    auto i = std::clamp(stoi(istr) - 1, 0,
-		                        static_cast<int>(activities.size()) - 1);
-		    return Selection{SelectionType::nextactivity, i};
-		} catch (const std::exception&) {
-		    return Selection{SelectionType::none};
-		}
-	};
-
-	auto selection = select_activity();
-
+	auto selection = select_activity(activities);
 	while (!activities.empty()) {
 
 		if (selection == SelectionType::exit) break;	// exit
@@ -149,14 +130,16 @@ int main(int argc, char* argv[])
 				println("{} (last stopped)",
 					fmt_localtime("%d/%m/%Y-%H:%M", curr.time_stopped()));
 
-			println(co::fg(co::terminal_color::yellow) | co::emphasis::bold,
-				"{}", box(curr.name()));
+			println("{}", box(
+				curr.name(),
+				co::fg(co::terminal_color::yellow) | co::emphasis::bold));
 
 			chronometer(curr);
 
 			activities.stop();
 
-			auto resp = input(format("\n\nIs \"{}\" completed? ", curr.name()));
+			string the_name = colibry::EscapedText{co::emphasis::bold, curr.name()};
+			auto resp = input(format("\n\n   \nIs \"{}\" completed? ", the_name));
 			if (resp.starts_with("y") || resp.starts_with("Y")) {
 				// complete current activity
 				auto old = activities.remove(0);
@@ -167,7 +150,7 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		selection = select_activity();
+		selection = select_activity(activities);
 	}
 
 	println();
@@ -208,9 +191,9 @@ int main(int argc, char* argv[])
 		while (!completed_activities.empty()) {
 			auto a = std::move(completed_activities.top());
 			completed_activities.pop();
-			println("{}",*a);
-			println(history, "{}", *a);
-			println("-------------------");
+			print("{}",*a);
+			print(history, "{}", *a);
+			println("------------");
 		}
 	}
 	history.close();
@@ -316,8 +299,32 @@ void read_new_activities(Activities& acts)
 {
 	auto a = input("New activity: ");
 	while (!a.empty()) {
-		acts.add(a);
+		acts.add(a, true);
 		a = input("New activity: ");
+	}
+}
+
+Selection select_activity(const Activities& activities)
+{
+	list_activities(activities);
+	auto istr = input("[#] [ENTER] [n]ew [d]elete e[x]it: ");
+	if (istr.empty())
+		return Selection{SelectionType::resumelast};
+	if (istr.starts_with("n"))
+		return Selection{SelectionType::newactivity};
+	if (istr.starts_with("d")) {
+		auto s = istr.substr(1).empty() ? 0 : stoi(istr.substr(1));
+		return Selection(SelectionType::delactivity, s - 1);
+	}
+	if (istr.starts_with("x"))
+		return Selection{SelectionType::exit};
+
+	try {
+	    auto i = std::clamp(stoi(istr) - 1, 0,
+	                        static_cast<int>(activities.size()) - 1);
+	    return Selection{SelectionType::nextactivity, i};
+	} catch (const std::exception&) {
+	    return Selection{SelectionType::none};
 	}
 }
 
@@ -416,19 +423,24 @@ std::vector<std::string_view> split(std::string_view s, char t)
 	return v;
 }
 
-std::string box(const std::string& title)
+std::string box(const std::string& title, const co::TextStyle& style)
 {
 	// break string into lines
 	auto lines = split(title,'\n');
 	std::string::size_type wid = 0;
 	for (const auto& l : lines)
-		wid = std::max(l.size(), wid);
+		wid = std::max(co::unicode_size(l), wid);
 	wid += 2;	// padding
 
 	std::string out;
+
 	out = format(std::runtime_format("\u250C{0:\u2500^{1}}\u2510\n"), "", wid);
-	for (const auto& l : lines)
-		out += format(std::runtime_format("\u2502{0: ^{1}}\u2502\n"), l, wid);
+	for (const auto& l : lines) {
+		out += "\u2502";
+		out += co::EscapedText{style,
+			format(std::runtime_format("{0: ^{1}}"), l, wid)};
+		out += "\u2502\n";
+	}
 	out += format(std::runtime_format("\u2514{0:\u2500^{1}}\u2518"), "", wid);
 
 	return out;

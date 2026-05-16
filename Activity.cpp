@@ -120,9 +120,14 @@ void Activities::add(std::unique_ptr<Activity> a)
 	activities_.emplace_back(std::move(a));
 }
 
-void Activities::add(const std::string& a)
+size_t Activities::add(const std::string& a, bool prepend)
 {
+	if (prepend) {
+		activities_.insert(activities_.begin(), make_unique<Activity>(a));
+		return 0;
+	}
 	activities_.emplace_back(make_unique<Activity>(a));
+	return activities_.size() - 1;
 }
 
 Activity_ptr Activities::remove(int i)

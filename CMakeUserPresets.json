@@ -1,0 +1,14 @@
+{
+	"version": 9,
+	"configurePresets": [
+		{
+			"name": "default",
+			"displayName": "Build Today using user specs",
+			"description": "Use this preset to compile.",
+			"inherits": "ci-default",
+			"cacheVariables": {
+				"CMAKE_PREFIX_PATH": "$env{COLIBRY}/lib/cmake"
+			}
+		}
+	]
+}

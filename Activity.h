@@ -9,6 +9,7 @@
 #include <memory>
 #include <list>
 #include <utility>
+#include <colibry/TextTools.h>
 
 using Clock  = std::chrono::system_clock;
 using Unit_t = std::chrono::seconds;
@@ -69,7 +70,7 @@ struct std::formatter<Activity> : std::formatter<std::string> {
 			hist += std::format("     \t{} - {}\n",
 				fmt_localtime("%d/%m/%Y %H:%M", start),
 				fmt_localtime("%d/%m/%Y %H:%M", end));
-		return format_to(ctx.out(), R"([{}]
+		return format_to(ctx.out(), R"({}
 ------------
      CREATED = {}
      STARTED = {}
@@ -78,11 +79,12 @@ struct std::formatter<Activity> : std::formatter<std::string> {
         IDLE = {}
      HISTORY:
 {})",
-		a.name(),
+		colibry::EscapedText{colibry::emphasis::reverse, " " + a.name() + " "},
 		fmt_localtime("%d/%m/%Y-%H:%M", a.time_created()),
 		(a.started() ? fmt_localtime("%d/%m/%Y-%H:%M", a.time_started()) : "NEVER"),
 		fmt_localtime("%d/%m/%Y-%H:%M", a.time_ended()),
-		(a.started() ? sec_to_str(a.duration().count()) : "--"),
+		colibry::EscapedText{colibry::emphasis::bold,
+			(a.started() ? sec_to_str(a.duration().count()) : "--")},
 		(a.started() ? sec_to_str(a.idle().count()) : "--"),
 		hist);
 	}
@@ -95,7 +97,7 @@ using Activity_ptr = std::unique_ptr<Activity>;
 class Activities {
 public:
 	void add(Activity_ptr a);		// will take ownweship
-	void add(const std::string& a);	// return index
+	size_t add(const std::string& a, bool prepend=false);	// return index
 	Activity_ptr remove(int i);
 	Activity_ptr remove_current();
 	[[nodiscard]] std::optional<int> find(const std::string& a) const;
